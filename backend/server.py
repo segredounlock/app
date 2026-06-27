@@ -171,6 +171,61 @@ async def login(payload: LoginRequest, response: Response):
     return {"user": User(**public_user).model_dump(), "session_token": token}
 
 
+async def _fetch_emergent_session(session_id: str) -> dict:
+    """Exchange a one-time Emergent session_id for user data."""
+    async with httpx.AsyncClient(timeout=15) as cli:
+        try:
+            r = await cli.get(EMERGENT_AUTH_URL, headers={"X-Session-ID": session_id})
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Auth provider error: {e}")
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid session_id")
+    return r.json()
+
+
+async def _upsert_google_user(data: dict) -> str:
+    """Insert or update a user document from Google session data; returns user_id."""
+    email = (data.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="No email in session data")
+
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        await db.users.update_one(
+            {"user_id": existing["user_id"]},
+            {"$set": {
+                "name": data.get("name") or existing.get("name"),
+                "picture": data.get("picture") or existing.get("picture"),
+            }},
+        )
+        return existing["user_id"]
+
+    user_id = f"user_{uuid.uuid4().hex[:16]}"
+    await db.users.insert_one({
+        "user_id": user_id,
+        "email": email,
+        "username": (data.get("name") or email.split("@")[0]).replace(" ", "").lower()[:40],
+        "name": data.get("name"),
+        "picture": data.get("picture"),
+        "password_hash": None,
+        "auth_provider": "google",
+        "created_at": datetime.now(timezone.utc),
+    })
+    return user_id
+
+
+async def _persist_session(user_id: str, token: Optional[str] = None) -> str:
+    """Persist a session_token row for the given user; returns the token used."""
+    final_token = token or f"st_{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": final_token,
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS),
+        "created_at": datetime.now(timezone.utc),
+    })
+    return final_token
+
+
 @api_router.get("/auth/google/session")
 async def google_session_exchange(
     response: Response,
@@ -179,50 +234,9 @@ async def google_session_exchange(
     if not x_session_id:
         raise HTTPException(status_code=400, detail="Missing X-Session-ID header")
 
-    async with httpx.AsyncClient(timeout=15) as cli:
-        try:
-            r = await cli.get(EMERGENT_AUTH_URL, headers={"X-Session-ID": x_session_id})
-        except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Auth provider error: {e}")
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid session_id")
-    data = r.json()
-
-    email = (data.get("email") or "").lower().strip()
-    if not email:
-        raise HTTPException(status_code=400, detail="No email in session data")
-
-    existing = await db.users.find_one({"email": email}, {"_id": 0})
-    if existing:
-        user_id = existing["user_id"]
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "name": data.get("name") or existing.get("name"),
-                "picture": data.get("picture") or existing.get("picture"),
-            }},
-        )
-    else:
-        user_id = f"user_{uuid.uuid4().hex[:16]}"
-        await db.users.insert_one({
-            "user_id": user_id,
-            "email": email,
-            "username": (data.get("name") or email.split("@")[0]).replace(" ", "").lower()[:40],
-            "name": data.get("name"),
-            "picture": data.get("picture"),
-            "password_hash": None,
-            "auth_provider": "google",
-            "created_at": datetime.now(timezone.utc),
-        })
-
-    # Use Emergent's session_token if provided, otherwise mint our own
-    token = data.get("session_token") or f"st_{uuid.uuid4().hex}{uuid.uuid4().hex}"
-    await db.user_sessions.insert_one({
-        "user_id": user_id,
-        "session_token": token,
-        "expires_at": datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS),
-        "created_at": datetime.now(timezone.utc),
-    })
+    data = await _fetch_emergent_session(x_session_id)
+    user_id = await _upsert_google_user(data)
+    token = await _persist_session(user_id, data.get("session_token"))
     set_session_cookie(response, token)
 
     user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})

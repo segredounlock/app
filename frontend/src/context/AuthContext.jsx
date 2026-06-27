@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -38,32 +38,33 @@ export function AuthProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const { data } = await axios.post(`${API}/auth/login`, { email, password });
     setUser(data.user);
     return data.user;
-  };
+  }, []);
 
-  const register = async (username, email, password) => {
+  const register = useCallback(async (username, email, password) => {
     const { data } = await axios.post(`${API}/auth/register`, { username, email, password });
     setUser(data.user);
     return data.user;
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await axios.post(`${API}/auth/logout`);
-    } catch {
-      /* noop */
+    } catch (error) {
+      console.error("Logout request failed (clearing client state anyway):", error);
     }
     setUser(null);
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout, refresh }),
+    [user, loading, login, register, logout, refresh],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
