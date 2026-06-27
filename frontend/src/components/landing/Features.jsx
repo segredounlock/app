@@ -33,7 +33,7 @@ function FeatureCard({ Icon, title, desc, testid }) {
   return (
     <div className="feature-card" data-testid={testid}>
       <div className="feature-icon">
-        <Icon size={26} strokeWidth={1.8} />
+        <Icon size={36} strokeWidth={1.6} />
       </div>
       <div className="feature-title">{title}</div>
       <div className="feature-desc">{desc}</div>
@@ -45,16 +45,12 @@ export default function Features() {
   return (
     <section
       data-testid={LANDING.featuresSection}
-      className="features-grid"
+      className="features-grid panel"
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 22,
-        padding: 22,
-        border: "1px solid var(--border)",
-        borderRadius: 18,
-        background: "rgba(10, 15, 13, 0.55)",
-        backdropFilter: "blur(8px)",
+        gap: 0,
+        marginTop: 24,
       }}
     >
       {FEATURES.map((f) => (

@@ -14,7 +14,7 @@ function StatItem({ Icon, value, label, testid }) {
   return (
     <div className="stat" data-testid={testid}>
       <div className="stat-icon">
-        <Icon size={22} strokeWidth={1.8} />
+        <Icon size={36} strokeWidth={1.6} />
       </div>
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
@@ -26,17 +26,13 @@ export default function Stats() {
   return (
     <section
       data-testid={LANDING.statsSection}
-      className="stats-grid"
+      className="stats-grid panel"
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(5, 1fr)",
-        gap: 8,
-        padding: "28px 22px",
-        border: "1px solid var(--border)",
-        borderRadius: 18,
-        background: "rgba(10, 15, 13, 0.55)",
-        backdropFilter: "blur(8px)",
-        marginTop: 22,
+        gap: 0,
+        padding: "32px 0",
+        marginTop: 24,
       }}
     >
       {STATS.map((s) => (
