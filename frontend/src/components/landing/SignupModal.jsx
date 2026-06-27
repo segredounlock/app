@@ -1,164 +1,81 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { X, Mail, Lock, User } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import GoogleButton from "@/components/landing/GoogleButton";
 
-export default function SignupModal({ open, onClose }) {
+export default function SignupModal({ open, onClose, onSwitchToLogin }) {
+  const { register } = useAuth();
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleKey = useCallback((e) => {
+    if (e.key === "Escape") onClose();
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, handleKey]);
 
   if (!open) return null;
 
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr(""); setLoading(true);
+    try {
+      await register(username, email, password);
+      onClose();
+    } catch (ex) {
+      setErr(ex?.response?.data?.detail || "Erro ao registrar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div
-      data-testid="signup-modal-overlay"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0, 0, 0, 0.78)",
-        backdropFilter: "blur(8px)",
-        zIndex: 100,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        animation: "fadeIn 0.2s ease",
-      }}
-    >
-      <div
-        data-testid="signup-modal"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 460,
-          background: "linear-gradient(180deg, #0d1411 0%, #050807 100%)",
-          border: "1px solid var(--border-2)",
-          borderRadius: 18,
-          padding: 36,
-          position: "relative",
-          boxShadow: "0 0 80px rgba(45, 255, 126, 0.15)",
-        }}
-      >
-        <button
-          data-testid="signup-modal-close"
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            background: "transparent",
-            border: "1px solid var(--border-2)",
-            borderRadius: 8,
-            color: "var(--text-dim)",
-            width: 34,
-            height: 34,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <X size={16} />
-        </button>
+    <div data-testid="signup-modal-overlay" onClick={onClose} className="modal-overlay">
+      <div data-testid="signup-modal" onClick={(e) => e.stopPropagation()} className="modal-card">
+        <button data-testid="signup-modal-close" onClick={onClose} className="modal-close"><X size={16} /></button>
+        <div className="badge" style={{ marginBottom: 18 }}><span className="dot" /> Acesso Inicial</div>
+        <h2 className="modal-title">Criar sua conta</h2>
+        <p className="modal-sub">Entre no submundo do conhecimento ético.</p>
 
-        <div className="badge" style={{ marginBottom: 18 }}>
-          <span className="dot" /> Acesso Inicial
-        </div>
+        <GoogleButton testid="signup-google-btn" label="Criar conta com Google" />
+        <div className="modal-divider"><span>ou com e-mail</span></div>
 
-        <h2
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 24,
-            fontWeight: 800,
-            color: "#fff",
-            margin: 0,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Criar sua conta
-        </h2>
-        <p
-          style={{
-            color: "var(--text-dim)",
-            fontSize: 13,
-            marginTop: 8,
-            marginBottom: 24,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
-          Entre no submundo do conhecimento ético.
-        </p>
-
-        <form
-          data-testid="signup-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-          style={{ display: "flex", flexDirection: "column", gap: 14 }}
-        >
-          <ModalInput Icon={User} placeholder="Username" testid="signup-username" />
-          <ModalInput Icon={Mail} type="email" placeholder="seu@email.com" testid="signup-email" />
-          <ModalInput Icon={Lock} type="password" placeholder="Senha" testid="signup-password" />
-
-          <button
-            data-testid="signup-submit"
-            type="submit"
-            className="btn-primary"
-            style={{ justifyContent: "center", marginTop: 8, width: "100%" }}
-          >
-            &gt;_ Criar Conta
+        <form data-testid="signup-form" onSubmit={submit} className="modal-form">
+          <label className="modal-input">
+            <User size={16} color="var(--neon)" />
+            <input data-testid="signup-username" required minLength={2}
+                   value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" />
+          </label>
+          <label className="modal-input">
+            <Mail size={16} color="var(--neon)" />
+            <input data-testid="signup-email" type="email" required
+                   value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
+          </label>
+          <label className="modal-input">
+            <Lock size={16} color="var(--neon)" />
+            <input data-testid="signup-password" type="password" required minLength={6}
+                   value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha (mín. 6)" />
+          </label>
+          {err && <div data-testid="signup-error" className="modal-error">{err}</div>}
+          <button data-testid="signup-submit" type="submit" disabled={loading}
+                  className="btn-primary" style={{ justifyContent: "center", width: "100%" }}>
+            {loading ? "..." : ">_ Criar Conta"}
           </button>
         </form>
 
-        <p
-          style={{
-            color: "var(--text-mute)",
-            fontSize: 11,
-            marginTop: 18,
-            fontFamily: "'JetBrains Mono', monospace",
-            textAlign: "center",
-          }}
-        >
-          Já possui acesso? <span style={{ color: "var(--neon)", cursor: "pointer" }}>Entrar →</span>
+        <p className="modal-foot">
+          Já possui acesso?{" "}
+          <span data-testid="switch-to-login" className="modal-link"
+                onClick={onSwitchToLogin}>Entrar →</span>
         </p>
       </div>
     </div>
-  );
-}
-
-function ModalInput({ Icon, type = "text", placeholder, testid }) {
-  return (
-    <label
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        background: "rgba(45, 255, 126, 0.03)",
-        border: "1px solid var(--border-2)",
-        borderRadius: 10,
-        padding: "12px 14px",
-      }}
-    >
-      <Icon size={16} color="var(--neon)" />
-      <input
-        data-testid={testid}
-        type={type}
-        placeholder={placeholder}
-        required
-        style={{
-          flex: 1,
-          background: "transparent",
-          border: "none",
-          outline: "none",
-          color: "#fff",
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 13,
-        }}
-      />
-    </label>
   );
 }

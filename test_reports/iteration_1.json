@@ -1,0 +1,42 @@
+{
+  "summary": "First full-stack test of Centraldark auth + landing pages. Backend: 16/16 pytest tests passed (register/login/me/logout/google-session/contact). Frontend: landing renders, signup→user-chip→logout flow works, login works, all 5 inner routes work with active link styling, Ferramentas search+category filters work, Planos period toggle changes R$49→R$39, Contato form submits and shows success banner, Google login button navigates to https://auth.emergentagent.com/?redirect=<origin>/auth/callback, /dashboard is properly protected (redirects to / when logged out).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing Hero", "issues": ["Hero h1 renders as 'HACKEIE OCONHECIMENTO.PROTEJA O FUTURO.' with missing spacing between lines in DOM text (visual rendering OK due to <br> styling, but text-content concatenation suggests <br> instead of separate elements — purely cosmetic, not blocking)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_and_contact.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: /api/auth/logout deletes cookie with samesite='none', secure=True — correct for cross-origin SPA.",
+    "server.py: /api/auth/google/session uses Emergent's session_token directly OR mints own — good fallback.",
+    "AuthContext.jsx: axios.defaults.withCredentials=true set globally — affects all axios calls app-wide (acceptable for this single-origin app, but worth noting).",
+    "AuthContext.jsx: refresh() skips on hash session_id to let AuthCallback handle — clean pattern.",
+    "App.js: synchronous hash check before <Routes/> is a clever workaround for OAuth callback when redirect lands on '/'.",
+    "GoogleButton.jsx: correctly uses window.location.origin + '/auth/callback' (no hardcoded URL).",
+    "All endpoints exclude MongoDB _id via {_id: 0} projection — good.",
+    "Pydantic v2 models with EmailStr + Field constraints — proper validation, returns 422 on invalid input.",
+    "Sessions stored in MongoDB with expires_at; expired sessions rejected in resolve_user_from_token.",
+    "No password leak: password_hash excluded from /auth/me response (User model omits it).",
+    "Minor: server.py imports HTTPBearer comment in get_current_user is accurate — uses raw Authorization header to support both cookie & bearer in one dep."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_and_contact.py (created)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Seeded user test@centraldark.io / Test1234! — confirmed by passing test_seeded_user_login_if_exists. Dynamic users created during tests use tester+<timestamp>@centraldark.io / Test1234!.",
+  "seed_data_creation": "Test created a fresh user (tester+<ts>@centraldark.io) and a contact_messages document during tests. No cleanup performed; both are non-blocking test data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest file at /app/backend/tests/test_auth_and_contact.py covers all 7 endpoints with create→GET-style verification (uses pytest.shared dict to pass token/user between tests, runs under -n auto fine). Frontend: all data-testids documented in /app/frontend/src/constants/testIds.js + individual components. Google OAuth full flow CANNOT be automated (requires real Google login on auth.emergentagent.com) — only the redirect kick-off is verified. To re-run backend: `cd /app && python -m pytest backend/tests/test_auth_and_contact.py -v`.",
+  "rca of the issue": "No bugs found. The one playwright assertion that initially failed (active class) was a timing artifact in my script (className read happened before React re-render flushed); re-checked with page.evaluate after networkidle wait and all 5 routes report class='nav-link active'. The second 'failure' on Google button was a false negative — I asserted on a captured 3rd-party (Criteo) request URL instead of the final page URL; final URL was correct: https://auth.emergentagent.com/?redirect=https%3A%2F%2Foi-platform-402.preview.emergentagent.com%2Fauth%2Fcallback."
+}
