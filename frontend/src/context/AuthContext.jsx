@@ -18,6 +18,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // `API` is a module-level constant; `axios` is a library global; `setUser`/`setLoading`
+  // are React state setters which are guaranteed stable. None belong in the deps array.
   const refresh = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/auth/me`);
@@ -27,6 +29,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -42,12 +45,14 @@ export function AuthProvider({ children }) {
     const { data } = await axios.post(`${API}/auth/login`, { email, password });
     setUser(data.user);
     return data.user;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const register = useCallback(async (username, email, password) => {
     const { data } = await axios.post(`${API}/auth/register`, { username, email, password });
     setUser(data.user);
     return data.user;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logout = useCallback(async () => {
@@ -57,6 +62,7 @@ export function AuthProvider({ children }) {
       console.error("Logout request failed (clearing client state anyway):", error);
     }
     setUser(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(

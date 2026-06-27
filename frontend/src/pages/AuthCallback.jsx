@@ -6,6 +6,18 @@ import { useAuth } from "@/context/AuthContext";
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+function extractSessionId() {
+  const match = (window.location.hash || "").match(/session_id=([^&]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function exchangeSession(sessionId) {
+  return axios.get(`${API}/auth/google/session`, {
+    headers: { "X-Session-ID": sessionId },
+    withCredentials: true,
+  });
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const { refresh } = useAuth();
@@ -16,24 +28,19 @@ export default function AuthCallback() {
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
-    const hash = window.location.hash || "";
-    const match = hash.match(/session_id=([^&]+)/);
-    if (!match) {
+    const sessionId = extractSessionId();
+    if (!sessionId) {
       navigate("/");
       return;
     }
-    const sessionId = decodeURIComponent(match[1]);
 
     (async () => {
       try {
-        await axios.get(`${API}/auth/google/session`, {
-          headers: { "X-Session-ID": sessionId },
-          withCredentials: true,
-        });
+        await exchangeSession(sessionId);
         await refresh();
         window.history.replaceState(null, "", "/dashboard");
         navigate("/dashboard", { replace: true });
-      } catch (e) {
+      } catch {
         setError("Falha ao autenticar. Tente novamente.");
         setTimeout(() => navigate("/"), 1800);
       }

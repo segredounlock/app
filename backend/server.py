@@ -94,7 +94,7 @@ async def resolve_user_from_token(token: str) -> Optional[User]:
     expires_at = session["expires_at"]
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
-    if expires_at.tzinfo is None:
+    if expires_at.tzinfo is None:  # PEP 8: use `is` for None comparison (not `==`)
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
         return None
