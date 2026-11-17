@@ -16,7 +16,7 @@ export default function Hero() {
         minHeight: "76vh",
       }}
     >
-      <div style={{ padding: "60px 20px 60px 8px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div className="hero-copy" style={{ padding: "60px 20px 60px 8px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div data-testid={LANDING.heroBadge} className="badge rise" style={{ alignSelf: "flex-start" }}>
           PLATAFORMA DE CIBERSEGURANÇA
         </div>

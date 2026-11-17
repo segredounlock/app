@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import Logo from "@/components/landing/Logo";
 import SignupModal from "@/components/landing/SignupModal";
 import LoginModal from "@/components/landing/LoginModal";
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
 ];
 
 export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -36,7 +37,7 @@ export default function Navbar() {
       >
         <Link to="/" style={{ textDecoration: "none" }}><Logo /></Link>
 
-        <div className="nav-links" style={{ display: "flex", gap: 32 }}>
+        <div className={`nav-links${menuOpen ? " mobile-open" : ""}`} style={{ display: "flex", gap: 32 }}>
           {NAV_ITEMS.map((item) => {
             const active = location.pathname === item.to;
             return (
@@ -45,35 +46,47 @@ export default function Navbar() {
                 to={item.to}
                 data-testid={item.testid}
                 className={`nav-link ${active ? "active" : ""}`}
+                onClick={() => setMenuOpen(false)}
               >
                 {item.label}
               </Link>
             );
           })}
+          <div className="nav-actions">
+            {user ? (
+              <>
+                <div data-testid="user-chip" className="user-chip">
+                  <span className="avatar">
+                    {(user.username || user.email || "U").slice(0, 1).toUpperCase()}
+                  </span>
+                  {user.username || user.email}
+                </div>
+                <button data-testid="logout-btn" className="btn-nav" onClick={() => { setMenuOpen(false); logout(); }}>
+                  <LogOut size={14} style={{ marginRight: 6 }} /> Sair
+                </button>
+              </>
+            ) : (
+              <>
+                <button data-testid={LANDING.navLogin} className="btn-nav"
+                        onClick={() => { setMenuOpen(false); setLoginOpen(true); }}>Entrar</button>
+                <button data-testid={LANDING.navSignup} className="btn-nav-primary"
+                        onClick={() => { setMenuOpen(false); setSignupOpen(true); }}>Criar Conta</button>
+              </>
+            )}
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {user ? (
-            <>
-              <div data-testid="user-chip" className="user-chip">
-                <span className="avatar">
-                  {(user.username || user.email || "U").slice(0, 1).toUpperCase()}
-                </span>
-                {user.username || user.email}
-              </div>
-              <button data-testid="logout-btn" className="btn-nav" onClick={logout}>
-                <LogOut size={14} style={{ marginRight: 6 }} /> Sair
-              </button>
-            </>
-          ) : (
-            <>
-              <button data-testid={LANDING.navLogin} className="btn-nav"
-                      onClick={() => setLoginOpen(true)}>Entrar</button>
-              <button data-testid={LANDING.navSignup} className="btn-nav-primary"
-                      onClick={() => setSignupOpen(true)}>Criar Conta</button>
-            </>
-          )}
-        </div>
+        <button
+          type="button"
+          className="nav-burger"
+          aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menuOpen}
+          data-testid="nav-burger"
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
       </nav>
 
       <LoginModal

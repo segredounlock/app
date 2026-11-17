@@ -9,6 +9,7 @@ export default function Landing() {
   return (
     <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: "#060906" }}>
       <div
+        className="cd-container"
         style={{
           position: "relative",
           zIndex: 1,
